@@ -1,18 +1,27 @@
 /** @format */
 
 import { Component } from "react";
-import { getCalendarEvents } from "../api-client";
 import moment from "moment";
+import { getCalendarEvents } from "../api-client";
 import "./index.css";
+
+interface Day {
+  date: Date;
+  numberOfEvents: number;
+  sumAllEvent: number;
+  longestEvent: string;
+  longestEventDuration: number;
+}
 
 class CalendarSummary extends Component {
   today = new Date();
   state = {
+    quantityOfDays: 7,
     ourDays: [],
   };
 
-  componentWillMount() {
-    for (let i = 0; i < 7; i++) {
+  getDataFropApi() {
+    for (let i = 0; i < this.state.quantityOfDays; i++) {
       const nextDay: Date = new Date(this.today);
 
       nextDay.setDate(nextDay.getDate() + i);
@@ -30,12 +39,15 @@ class CalendarSummary extends Component {
             (item) => item.durationInMinutes === longestEventMinutes
           );
           const longestEvent: string = longestEventObj.title;
-          const dayObject: Object = {
-            date: moment(nextDay).format("YYYY-MM-DD"),
+
+          const longestEventDuration: number =
+            longestEventObj.durationInMinutes;
+          const dayObject: Day = {
+            date: nextDay,
             numberOfEvents: res.length,
             sumAllEvent,
             longestEvent,
-            key: i,
+            longestEventDuration,
           };
 
           this.setState({
@@ -46,12 +58,39 @@ class CalendarSummary extends Component {
     }
   }
 
+  componentWillMount() {
+    this.getDataFropApi();
+  }
+
   render() {
     const { ourDays } = this.state;
 
+    const sortedArrayByDate:object[] = ourDays.sort((day1: any, day2: any) => {
+      return day1.date - day2.date;
+    });
+
+    const formatedSortedByDateArray = sortedArrayByDate.map((day: any) => {
+      return {
+        ...day,
+        date: moment(day.date).format("YYYY-MM-DD"),
+      };
+    });
+
     let sumNumberOfEvenet: number = 0;
     let sumTotalDuration: number = 0;
-    let longetEventOfWeek: string = "";
+
+    const longestEventDurationArray: number[] = formatedSortedByDateArray.map(
+      (day: any) => day.longestEventDuration
+    );
+
+    const maxLongestEventDuration: number = Math.max(
+      ...longestEventDurationArray
+    );
+
+    const eventWithLongestDuration = formatedSortedByDateArray.find(
+      (day: any) => day.longestEventDuration === maxLongestEventDuration
+    );
+
     return (
       <div>
         <h2>Calendar summary</h2>
@@ -66,20 +105,19 @@ class CalendarSummary extends Component {
             </tr>
           </thead>
           <tbody>
-            {ourDays.map((day: any) => {
+            {formatedSortedByDateArray.map((day) => {
               const {
                 date,
                 numberOfEvents,
                 sumAllEvent,
                 longestEvent,
-                key,
               } = day;
 
               sumNumberOfEvenet += numberOfEvents;
               sumTotalDuration += sumAllEvent;
 
               return (
-                <tr key={key}>
+                <tr key={date}>
                   <td>{date}</td>
                   <td className="numberValue">{numberOfEvents}</td>
                   <td className="numberValue">{sumAllEvent}</td>
@@ -91,7 +129,11 @@ class CalendarSummary extends Component {
               <td>Total</td>
               <td className="numberValue">{sumNumberOfEvenet}</td>
               <td className="numberValue">{sumTotalDuration}</td>
-              <td>sssss</td>
+              {formatedSortedByDateArray.length > 0 ? (
+                <td>{eventWithLongestDuration.longestEvent}</td>
+              ) : (
+                <td>longest event</td>
+              )}
             </tr>
           </tbody>
         </table>
